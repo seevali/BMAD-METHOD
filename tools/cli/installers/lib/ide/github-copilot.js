@@ -208,6 +208,319 @@ class GitHubCopilotSetup extends BaseIdeSetup {
   }
 
   /**
+   * Get handoffs configuration for a specific agent based on BMAD workflow
+   * Handoffs enable guided transitions between agents with context preservation
+   * Reference: https://code.visualstudio.com/docs/copilot/customization/custom-agents
+   * @param {string} agentName - The agent name (e.g., 'pm', 'architect', 'dev')
+   * @param {string} moduleName - The module name (e.g., 'bmm', 'core')
+   * @returns {Array} Array of handoff configurations
+   */
+  getAgentHandoffs(agentName, moduleName) {
+    // BMAD Method workflow handoffs for BMM module
+    // The development workflow is: PM → Architect → PM → SM → Dev → SM
+    const bmmHandoffs = {
+      // Product Manager handoffs
+      pm: [
+        {
+          to: 'bmd-custom-bmm-architect',
+          label: 'Hand off to Architect',
+          prompt: 'Review the PRD and create the system architecture document.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-sm',
+          label: 'Hand off to Scrum Master',
+          prompt: 'PRD and architecture are complete. Please run sprint planning and prepare stories.',
+          send: false,
+        },
+      ],
+      // Architect handoffs
+      architect: [
+        {
+          to: 'bmd-custom-bmm-pm',
+          label: 'Hand off to PM',
+          prompt: 'Architecture document is complete. Please create epics and user stories.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-sm',
+          label: 'Hand off to Scrum Master',
+          prompt: 'Architecture is ready. Please validate implementation readiness.',
+          send: false,
+        },
+      ],
+      // Scrum Master handoffs
+      sm: [
+        {
+          to: 'bmd-custom-bmm-dev',
+          label: 'Hand off to Developer',
+          prompt: 'Story is ready for implementation. Please develop this story following the acceptance criteria.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-pm',
+          label: 'Hand off to PM',
+          prompt: 'Need product clarification on story requirements.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-architect',
+          label: 'Hand off to Architect',
+          prompt: 'Need technical guidance on implementation approach.',
+          send: false,
+        },
+      ],
+      // Developer handoffs
+      dev: [
+        {
+          to: 'bmd-custom-bmm-sm',
+          label: 'Hand off to Scrum Master',
+          prompt: 'Story implementation complete. Please review and facilitate code review.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-tea',
+          label: 'Hand off to Test Engineer',
+          prompt: 'Code is ready for testing. Please validate the implementation.',
+          send: false,
+        },
+      ],
+      // Test Engineer handoffs
+      tea: [
+        {
+          to: 'bmd-custom-bmm-dev',
+          label: 'Hand off to Developer',
+          prompt: 'Tests identified issues. Please fix the failing tests.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-sm',
+          label: 'Hand off to Scrum Master',
+          prompt: 'All tests passing. Story is complete and ready for review.',
+          send: false,
+        },
+      ],
+      // Analyst handoffs
+      analyst: [
+        {
+          to: 'bmd-custom-bmm-pm',
+          label: 'Hand off to PM',
+          prompt: 'Analysis complete. Please review findings and create the PRD.',
+          send: false,
+        },
+      ],
+      // UX Designer handoffs
+      'ux-designer': [
+        {
+          to: 'bmd-custom-bmm-pm',
+          label: 'Hand off to PM',
+          prompt: 'UX designs are complete. Please incorporate into the PRD.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-architect',
+          label: 'Hand off to Architect',
+          prompt: 'UX designs are ready for technical review.',
+          send: false,
+        },
+      ],
+      // Tech Writer handoffs
+      'tech-writer': [
+        {
+          to: 'bmd-custom-bmm-pm',
+          label: 'Hand off to PM',
+          prompt: 'Documentation is ready for review.',
+          send: false,
+        },
+      ],
+      // Quick Flow Solo Dev handoffs
+      'quick-flow-solo-dev': [
+        {
+          to: 'bmd-custom-bmm-tea',
+          label: 'Hand off to Test Engineer',
+          prompt: 'Implementation complete. Please validate the code.',
+          send: false,
+        },
+      ],
+    };
+
+    // Core module handoffs
+    const coreHandoffs = {
+      'bmad-master': [
+        {
+          to: 'bmd-custom-bmm-pm',
+          label: 'Start with PM',
+          prompt: 'Begin the BMAD workflow by creating a PRD.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmm-analyst',
+          label: 'Start with Analyst',
+          prompt: 'Begin with requirements analysis.',
+          send: false,
+        },
+      ],
+    };
+
+    // BMGD (Game Development) module handoffs
+    // The game dev workflow is: Game Designer → Game Architect → Game SM → Game Dev
+    const bmgdHandoffs = {
+      'game-designer': [
+        {
+          to: 'bmd-custom-bmgd-game-architect',
+          label: 'Hand off to Game Architect',
+          prompt: 'Game design is complete. Please create the technical architecture.',
+          send: false,
+        },
+      ],
+      'game-architect': [
+        {
+          to: 'bmd-custom-bmgd-game-designer',
+          label: 'Hand off to Game Designer',
+          prompt: 'Need design clarification for technical decisions.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmgd-game-scrum-master',
+          label: 'Hand off to Game Scrum Master',
+          prompt: 'Architecture is ready. Please prepare sprints and stories.',
+          send: false,
+        },
+      ],
+      'game-scrum-master': [
+        {
+          to: 'bmd-custom-bmgd-game-dev',
+          label: 'Hand off to Game Developer',
+          prompt: 'Story is ready for implementation.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-bmgd-game-architect',
+          label: 'Hand off to Game Architect',
+          prompt: 'Need technical guidance on implementation.',
+          send: false,
+        },
+      ],
+      'game-dev': [
+        {
+          to: 'bmd-custom-bmgd-game-scrum-master',
+          label: 'Hand off to Game Scrum Master',
+          prompt: 'Implementation complete. Ready for review.',
+          send: false,
+        },
+      ],
+    };
+
+    // CIS (Creative & Innovation Studio) module handoffs
+    // Creative agents can hand off between each other
+    const cisHandoffs = {
+      'brainstorming-coach': [
+        {
+          to: 'bmd-custom-cis-creative-problem-solver',
+          label: 'Hand off to Problem Solver',
+          prompt: 'Ideas generated. Please help refine and solve implementation challenges.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-cis-design-thinking-coach',
+          label: 'Hand off to Design Thinking Coach',
+          prompt: 'Brainstorming complete. Please apply design thinking methodology.',
+          send: false,
+        },
+      ],
+      'creative-problem-solver': [
+        {
+          to: 'bmd-custom-cis-innovation-strategist',
+          label: 'Hand off to Innovation Strategist',
+          prompt: 'Solutions identified. Please develop the innovation strategy.',
+          send: false,
+        },
+      ],
+      'design-thinking-coach': [
+        {
+          to: 'bmd-custom-cis-creative-problem-solver',
+          label: 'Hand off to Problem Solver',
+          prompt: 'Design thinking process complete. Please help solve remaining challenges.',
+          send: false,
+        },
+      ],
+      'innovation-strategist': [
+        {
+          to: 'bmd-custom-cis-presentation-master',
+          label: 'Hand off to Presentation Master',
+          prompt: 'Strategy is ready. Please help create the presentation.',
+          send: false,
+        },
+        {
+          to: 'bmd-custom-cis-storyteller',
+          label: 'Hand off to Storyteller',
+          prompt: 'Strategy complete. Please craft the narrative.',
+          send: false,
+        },
+      ],
+      'presentation-master': [
+        {
+          to: 'bmd-custom-cis-storyteller',
+          label: 'Hand off to Storyteller',
+          prompt: 'Presentation structure ready. Please enhance the storytelling.',
+          send: false,
+        },
+      ],
+      storyteller: [
+        {
+          to: 'bmd-custom-cis-presentation-master',
+          label: 'Hand off to Presentation Master',
+          prompt: 'Story is crafted. Please finalize the presentation.',
+          send: false,
+        },
+      ],
+    };
+
+    // BMB (BMAD Builder) module handoffs - for building BMAD itself
+    const bmbHandoffs = {
+      'bmad-builder': [
+        {
+          to: 'bmd-custom-core-bmad-master',
+          label: 'Hand off to BMAD Master',
+          prompt: 'Module/agent creation complete. Please verify and orchestrate.',
+          send: false,
+        },
+      ],
+    };
+
+    // Return appropriate handoffs based on module
+    switch (moduleName) {
+      case 'bmm': {
+        return bmmHandoffs[agentName] || [];
+      }
+      case 'core': {
+        return coreHandoffs[agentName] || [];
+      }
+      case 'bmgd': {
+        return bmgdHandoffs[agentName] || [];
+      }
+      case 'cis': {
+        return cisHandoffs[agentName] || [];
+      }
+      case 'bmb': {
+        return bmbHandoffs[agentName] || [];
+      }
+      default: {
+        return [];
+      }
+    }
+  }
+
+  /**
+   * Escape a string for use in YAML double-quoted strings
+   * @param {string} str - The string to escape
+   * @returns {string} The escaped string
+   */
+  escapeYamlString(str) {
+    return str.replaceAll('"', String.raw`\"`);
+  }
+
+  /**
    * Create agent content
    */
   async createAgentContent(agent, content) {
@@ -242,10 +555,31 @@ class GitHubCopilotSetup extends BaseIdeSetup {
       'usages', // Find references and navigate definitions
     ];
 
-    let agentContent = `---
-description: "${description.replaceAll('"', String.raw`\"`)}"
-tools: ${JSON.stringify(tools)}
----
+    // Get handoffs for this agent based on its module and name
+    const handoffs = this.getAgentHandoffs(agent.name, agent.module);
+
+    // Build the YAML frontmatter
+    let frontmatter = `---
+description: "${this.escapeYamlString(description)}"
+tools: ${JSON.stringify(tools)}`;
+
+    // Add handoffs if available (VS Code Agents Framework feature)
+    if (handoffs.length > 0) {
+      frontmatter += `
+handoffs:`;
+      for (const handoff of handoffs) {
+        frontmatter += `
+  - to: "${this.escapeYamlString(handoff.to)}"
+    label: "${this.escapeYamlString(handoff.label)}"
+    prompt: "${this.escapeYamlString(handoff.prompt)}"
+    send: ${handoff.send}`;
+      }
+    }
+
+    frontmatter += `
+---`;
+
+    let agentContent = `${frontmatter}
 
 # ${title} Agent
 
