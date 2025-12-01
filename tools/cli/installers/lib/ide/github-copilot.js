@@ -512,6 +512,15 @@ class GitHubCopilotSetup extends BaseIdeSetup {
   }
 
   /**
+   * Escape a string for use in YAML double-quoted strings
+   * @param {string} str - The string to escape
+   * @returns {string} The escaped string
+   */
+  escapeYamlString(str) {
+    return str.replaceAll('"', String.raw`\"`);
+  }
+
+  /**
    * Create agent content
    */
   async createAgentContent(agent, content) {
@@ -551,7 +560,7 @@ class GitHubCopilotSetup extends BaseIdeSetup {
 
     // Build the YAML frontmatter
     let frontmatter = `---
-description: "${description.replaceAll('"', String.raw`\"`)}"
+description: "${this.escapeYamlString(description)}"
 tools: ${JSON.stringify(tools)}`;
 
     // Add handoffs if available (VS Code Agents Framework feature)
@@ -560,9 +569,9 @@ tools: ${JSON.stringify(tools)}`;
 handoffs:`;
       for (const handoff of handoffs) {
         frontmatter += `
-  - to: "${handoff.to}"
-    label: "${handoff.label}"
-    prompt: "${handoff.prompt.replaceAll('"', String.raw`\"`)}"
+  - to: "${this.escapeYamlString(handoff.to)}"
+    label: "${this.escapeYamlString(handoff.label)}"
+    prompt: "${this.escapeYamlString(handoff.prompt)}"
     send: ${handoff.send}`;
       }
     }
